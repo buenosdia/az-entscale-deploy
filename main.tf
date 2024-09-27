@@ -1,57 +1,27 @@
-# Get the current client configuration from the AzureRM provider.
-# This is used to populate the root_parent_id variable with the
-# current Tenant ID used as the ID for the "Tenant Root Group"
-# Management Group.
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
 
-data "azurerm_client_config" "core" {}
-
-# Declare the Azure landing zones Terraform module
-# and provide a base configuration.
-
+# Declare the Terraform Module for Cloud Adoption Framework
+# Enterprise-scale and provide a base configuration.
 module "enterprise_scale" {
   source  = "Azure/caf-enterprise-scale/azurerm"
-  version = "6.1.0" # change this to your desired version, https://www.terraform.io/language/expressions/version-constraints
-
-  default_location = "Central US"
+  version = "~> 1.0.0"
 
   providers = {
     azurerm              = azurerm
-    azurerm.connectivity = azurerm
-    azurerm.management   = azurerm
+    azurerm.management   = azurerm.management
+    azurerm.connectivity = azurerm.connectivity
   }
 
-  root_parent_id = data.azurerm_client_config.core.tenant_id
-  root_id        = var.root_id
-  root_name      = var.root_name
-  library_path   = "${path.root}/lib"
+  # Base module configuration settings.
+  root_parent_id   = data.azurerm_client_config.current.tenant_id
+  root_id          = local.root_id
+  root_name        = local.root_name
+  default_location = local.default_location
 
-  custom_landing_zones = {
-    "${var.root_id}-prod" = {
-      display_name               = "${upper(var.root_id)} PROD"
-      parent_management_group_id = "${var.root_id}-landing-zones"
-      subscription_ids           = []
-      archetype_config = {
-        archetype_id   = "customer_online"
-        parameters     = {}
-        access_control = {}
-      }
-    }
-    "${var.root_id}-nonprod" = {
-      display_name               = "${upper(var.root_id)} NONPROD"
-      parent_management_group_id = "${var.root_id}-landing-zones"
-      subscription_ids           = []
-      archetype_config = {
-        archetype_id = "customer_online"
-        parameters = {
-/*           Deny-Resource-Locations = {
-            listOfAllowedLocations = ["eastus","" ]
-          }
-          Deny-RSG-Locations = {
-            listOfAllowedLocations = ["eastus", ]
-          } */
-        }
-        access_control = {}
-      }
-    }
-  }
+  # Control deployment of the core landing zone hierachy.
+  deploy_core_landing_zones   = true
+  deploy_corp_landing_zones   = local.deploy_corp_landing_zones
+  deploy_online_landing_zones = local.deploy_online_landing_zones
+  deploy_sap_landing_zones    = local.deploy_sap_landing_zones
 }
